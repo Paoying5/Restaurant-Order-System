@@ -23,6 +23,10 @@ const db = new Pool({
 });
 
 // 1. Lấy danh sách món ăn (Menu)
+// Route kiểm tra máy chủ đã hoạt động chưa
+app.get('/', (req, res) => {
+  res.send(' Backend Đặt Món Ăn Nhà Hàng đang chạy thành công!');
+});
 app.get('/api/products', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM products WHERE is_available = true ORDER BY id ASC');
