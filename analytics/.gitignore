@@ -1,0 +1,10 @@
+cat << 'EOF' > analytics/.gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+vvenv/
+.venv/
+ENV/
+env/
+EOF
+

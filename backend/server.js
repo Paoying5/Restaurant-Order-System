@@ -110,3 +110,19 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server Backend chạy tại: http://localhost:${PORT}`);
 });
+// thêm health endpoint
+app.get('/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+
+    res.json({
+      status: 'ok',
+      database: 'connected',
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'error',
+      database: 'disconnected',
+    });
+  }
+});
