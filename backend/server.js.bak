@@ -39,123 +39,44 @@ app.get('/api/products', async (req, res) => {
 // 2. Khách đặt món
 app.post('/api/orders', async (req, res) => {
   const { tableNumber, items } = req.body;
-
-  // Kiểm tra dữ liệu đầu vào cơ bản
-  if (!tableNumber || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
-      error: 'Số bàn và danh sách món là bắt buộc'
-    });
-  }
-
   const client = await db.connect();
 
   try {
     await client.query('BEGIN');
+    const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    // Lấy thông tin giá hiện tại từ database
-    const productIds = items.map(item => item.productId);
-
-    const productsRes = await client.query(
-      `SELECT id, name, price
-       FROM products
-       WHERE id = ANY($1::int[])
-         AND is_available = true`,
-      [productIds]
-    );
-
-    // Tạo Map để tra cứu sản phẩm theo id
-    const productMap = new Map(
-      productsRes.rows.map(product => [product.id, product])
-    );
-
-    // Kiểm tra tất cả món khách gửi có tồn tại không
-    for (const item of items) {
-      if (!productMap.has(item.productId)) {
-        throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
-      }
-
-      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-        throw new Error(`Số lượng không hợp lệ cho sản phẩm: ${item.productId}`);
-      }
-    }
-
-    // Tính tổng tiền dựa trên giá lấy từ database
-    const totalAmount = items.reduce((sum, item) => {
-      const product = productMap.get(item.productId);
-
-      return sum + Number(product.price) * item.quantity;
-    }, 0);
-
-    // Tạo đơn hàng
     const orderRes = await client.query(
-      `INSERT INTO orders (table_number, total_amount)
-       VALUES ($1, $2)
-       RETURNING *`,
+      'INSERT INTO orders (table_number, total_amount) VALUES ($1, $2) RETURNING *',
       [tableNumber, totalAmount]
     );
-
     const newOrder = orderRes.rows[0];
 
-    // Tạo chi tiết đơn hàng
-    for (const item of items) {
-      const product = productMap.get(item.productId);
-
+    for (let item of items) {
       await client.query(
-        `INSERT INTO order_items
-         (order_id, product_id, quantity, price)
-         VALUES ($1, $2, $3, $4)`,
-        [
-          newOrder.id,
-          item.productId,
-          item.quantity,
-          product.price
-        ]
+        'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
+        [newOrder.id, item.productId, item.quantity, item.price]
       );
     }
 
     await client.query('COMMIT');
-
-    // Chuẩn bị dữ liệu gửi realtime cho Admin
-    const realtimeItems = items.map(item => {
-      const product = productMap.get(item.productId);
-
-      return {
-        productId: product.id,
-        name: product.name,
-        quantity: item.quantity,
-        price: Number(product.price)
-      };
-    });
 
     // Bắn tín hiệu Realtime đến màn hình Admin
     io.emit('new_order', {
       orderId: newOrder.id,
       tableNumber,
       totalAmount,
-      items: realtimeItems,
+      items,
       createdAt: newOrder.created_at
     });
 
-    res.status(201).json({
-      success: true,
-      orderId: newOrder.id
-    });
-
+    res.status(201).json({ success: true, orderId: newOrder.id });
   } catch (err) {
     await client.query('ROLLBACK');
-
-    console.error('Lỗi tạo đơn hàng:', err);
-
-    res.status(500).json({
-      error: 'Lỗi tạo đơn hàng'
-    });
-
+    res.status(500).json({ error: 'Lỗi tạo đơn hàng' });
   } finally {
     client.release();
   }
 });
-// node --check backend/server.js. Nếu không hiện gì cả → syntax JavaScript hợp lệ. 
-
 
 // 3. Lấy báo cáo thống kê theo tháng
 app.get('/api/reports/monthly', async (req, res) => {

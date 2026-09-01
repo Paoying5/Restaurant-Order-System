@@ -26,13 +26,11 @@ export default function CustomerMenu() {
     if (cart.length === 0) return alert('Vui lòng chọn ít nhất 1 món!');
     
     const payload = {
-      tableNumber,
-      items: cart.map(item => ({
-        productId: item.id,
-        quantity: item.quantity,
-        price: Number(item.price),
-        name: item.name
-      }))
+        tableNumber,
+        items: cart.map(item => ({
+            productId: item.id,
+            quantity: item.quantity
+        }))
     };
 
     try {

@@ -5,8 +5,9 @@ import { socket } from '../socket';
 export default function AdminDashboard() {
   const [liveOrders, setLiveOrders] = useState([]);
   const [report, setReport] = useState([]);
-  const [month, setMonth] = useState(8);
-  const [year, setYear] = useState(2026);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
 
   useEffect(() => {
     // Lắng nghe sự kiện đơn mới từ Socket.io
