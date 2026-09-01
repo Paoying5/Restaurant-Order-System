@@ -13,3 +13,6 @@ coverage/
 *.log
 
 docker-compose.override.yml
+
+# AI development context
+ai_context/
